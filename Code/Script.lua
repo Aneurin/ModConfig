@@ -242,7 +242,7 @@ function ModConfig.FindInMenu(menu, id)
 end
 
 function ModConfig.CloseDialog()
-    GetInGameInterface().idModConfigDlg:SetVisible(false)
+    GetInGameInterface().idModConfigDlg:delete()
 end
 
 function ModConfig.OpenDialog()
@@ -251,6 +251,9 @@ function ModConfig.OpenDialog()
         ModConfig:CreateModConfigDialog()
     end
     interface.idModConfigDlg:SetVisible(true)
+    -- In order for the scroll bar to know whether it needs to be shown, it needs to be able to
+    -- compare its content size with its actual size, and those values aren't calculated until
+    -- render time.
     CreateRealTimeThread(function()
         WaitMsg("OnRender")
         interface.idModConfigDlg.idScroll:ShowHide()
@@ -263,7 +266,7 @@ end
 function ModConfig:CreateModConfigDialog()
     local interface = GetInGameInterface()
     if interface.idModConfigDlg then
-        interface.idModConfigDlg:Done()
+        interface.idModConfigDlg:delete()
     end
     local this_mod_dir = ModConfig:ModDir()
 
