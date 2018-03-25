@@ -47,10 +47,17 @@ end
 --                        desc - The description for this option as presented to the user.This may
 --                               be a translatable tuple like T{12345, "Option Description"}. If
 --                               unset, defaults to an empty string.
---                        type - The type of variable this option controls. Currently only 'boolean'
---                               is supported, however this will be extended in the future to allow
---                               setting numbers, for example using a slider. If unset, defaults to
---                               'boolean'.
+--                        type - The type of variable this option controls. Currently 'boolean' and
+--                               'enum' are supported, however this will be extended in the future
+--                               to allow setting numbers, for example using a slider. If unset,
+--                               defaults to 'boolean'.
+--                        values - When type is 'enum', this defines the possible values for the
+--                                 option, and the label shown to the user.
+--                                 Example: values = {
+--                                                      {value = 1, label = "Option 1"},
+--                                                      {value = "foo", label = T{12345, "Foo"}},
+--                                                      {value = true, label = "Always"}
+--                                                   }
 --                        default - The value to use if the user hasn't set the option.
 function ModConfig:RegisterOption(mod_id, option_id, option_params)
     option_params = option_params or {}
@@ -504,6 +511,7 @@ function ModConfig:AddModSettingsToDialog(parent, mod_id, mod_registry)
             option_section:SetRolloverText(T{option_params.desc, UICity})
         end
         XText:new({
+            Id = "idLabel",
             Margins = box(0, 0, 0, 0),
             Padding = box(8, 2, 2, 2),
             VAlign = "center",
@@ -547,6 +555,8 @@ DefineClass.XModConfigToggleButton = {
             default = "",
         },
     },
+    HAlign = "right",
+    VAlign = "center",
     Background = RGBA(0, 0, 0, 0),
     RolloverBackground = RGBA(0, 0, 0, 0),
     PressedBackground = RGBA(0, 0, 0, 0),
@@ -561,8 +571,74 @@ function XModConfigToggleButton:OnChange(toggled)
     ModConfig:Set(self.ModId, self.OptionId, toggled)
 end
 
+
+DefineClass.XModConfigEnum = {
+    __parents = {
+        "XPageScroll",
+    },
+    properties = {
+        {
+            category = "Params",
+            id = "ModId",
+            editor = "text",
+            default = "",
+        },
+        {
+            category = "Params",
+            id = "OptionId",
+            editor = "text",
+            default = "",
+        },
+        {
+            category = "Params",
+            id = "OptionValues",
+            editor = "table",
+            default = {},
+        },
+    },
+    visible = true,
+}
+
+function XModConfigEnum:Init()
+    self.parent.idLabel:SetMargins(box(0, 0, self.MinWidth, 0))
+    local current_value = ModConfig:Get(self.ModId, self.OptionId)
+    local value_index = 1
+    for i, option in ipairs(self.OptionValues) do
+        if option.value == current_value then
+            value_index = i
+            break
+        end
+    end
+    self:SetPage(value_index, false)
+end
+
+function XModConfigEnum:SetPage(page, update)
+    if update == nil then update = true end
+    self.current_page = page
+    self.idPage:SetText(self.OptionValues[page].label)
+    if update then
+        ModConfig:Set(self.ModId, self.OptionId, self.OptionValues[page].value)
+    end
+end
+
+function XModConfigEnum:NextPage()
+    local next_page = self.current_page + 1
+    if next_page > #self.OptionValues then
+        next_page = 1
+    end
+    self:SetPage(next_page)
+end
+
+function XModConfigEnum:PreviousPage()
+    local next_page = self.current_page - 1
+    if next_page < 1 then
+        next_page = #self.OptionValues
+    end
+    self:SetPage(next_page)
+end
+
+
 function ModConfig:AddOptionControl(parent, mod_id, option_id)
-    local option_value = ModConfig:Get(mod_id, option_id)
     local option_params = self.registry[mod_id].options[option_id]
 
     if not option_params.type then
@@ -573,12 +649,15 @@ function ModConfig:AddOptionControl(parent, mod_id, option_id)
             Id = option_id,
             ModId = mod_id,
             OptionId = option_id,
-            --ImageScale = point(700, 700),
-            --MaxWidth = 50,
-            --MaxHeight = 43,
             MaxHeight = 35,
-            HAlign = "right",
-            --Shape = "InHHex",
+        }, parent)
+    elseif option_params.type == 'enum' then
+        XModConfigEnum:new({
+            Id = option_id,
+            ModId = mod_id,
+            OptionId = option_id,
+            OptionValues = option_params.values,
+            MaxHeight = 35,
         }, parent)
     end
 end
