@@ -47,6 +47,9 @@ end
 --                        desc - The description for this option as presented to the user.This may
 --                               be a translatable tuple like T{12345, "Option Description"}. If
 --                               unset, defaults to an empty string.
+--                        order - The order in which the option will be shown. If unset, defaults to
+--                                1. Options with the same order will be ordered alphabetically by
+--                                name.
 --                        type - The type of variable this option controls. Currently 'boolean' and
 --                               'enum' are supported, however this will be extended in the future
 --                               to allow setting numbers, for example using a slider. If unset,
@@ -62,6 +65,7 @@ end
 function ModConfig:RegisterOption(mod_id, option_id, option_params)
     option_params = option_params or {}
     option_params.name = option_params.name or option_id
+    option_params.order = option_params.order or 1
     if not (self.registry and self.registry[mod_id]) then
         self:RegisterMod(mod_id)
     end
@@ -467,7 +471,7 @@ function ModConfig:AddAllModSettingsToDialog(parent)
             sortable[#sortable + 1] = {id = mod_id, name = mod_registry.name}
         end
         TSort(sortable, "name")
-        for _, id_and_name in pairs(sortable) do
+        for _, id_and_name in ipairs(sortable) do
             ModConfig:AddModSettingsToDialog(parent, id_and_name.id, self.registry[id_and_name.id])
         end
     end
@@ -497,7 +501,21 @@ function ModConfig:AddModSettingsToDialog(parent, mod_id, mod_registry)
         section_header:SetRolloverTitle(mod_name)
         section_header:SetRolloverText(mod_desc)
     end
+    local sortable = {}
     for option_id, option_params in pairs(mod_registry.options) do
+        sortable[#sortable + 1] = {
+            id = option_id,
+            name = option_params.name,
+            order = option_params.order
+        }
+    end
+    -- TSort() appears to be a stable sort, so to sort by "order, name" we can sort by name and then
+    -- resort the result by order.
+    TSort(sortable, "name")
+    TSort(sortable, "order")
+    for _, sorted_option_params in ipairs(sortable) do
+        local option_id = sorted_option_params.id
+        local option_params = mod_registry.options[option_id]
         local option_section = XFrame:new({
             LayoutMethod = "Grid",
             Margins = box(2, 2, 2, 2),
