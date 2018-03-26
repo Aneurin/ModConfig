@@ -50,9 +50,9 @@ end
 --                        order - The order in which the option will be shown. If unset, defaults to
 --                                1. Options with the same order will be ordered alphabetically by
 --                                name.
---                        type - The type of variable this option controls. Currently 'boolean' and
---                               'enum' are supported, however this will be extended in the future
---                               to allow setting numbers, for example using a slider. If unset,
+--                        type - The type of variable this option controls. Currently 'boolean',
+--                               'enum', and 'number' are supported. In the future this is likely to
+--                               be extended to other options such as an input slider. If unset,
 --                               defaults to 'boolean'.
 --                        values - When type is 'enum', this defines the possible values for the
 --                                 option, and the label shown to the user.
@@ -61,11 +61,23 @@ end
 --                                                      {value = "foo", label = T{12345, "Foo"}},
 --                                                      {value = true, label = "Always"}
 --                                                   }
+--                        min, max - When type is 'number', these are used to set the minimum and
+--                                   maximum allowed values. If unset, no limits are enforced.
+--                        step - When type is 'number', this is used to set how much the value will
+--                               change when clicking the +/- buttons. If unset, defaults to 1.
 --                        default - The value to use if the user hasn't set the option.
 function ModConfig:RegisterOption(mod_id, option_id, option_params)
     option_params = option_params or {}
     option_params.name = option_params.name or option_id
     option_params.order = option_params.order or 1
+    if not option_params.default then
+        -- It makes sense to have a built-in fallback default for booleans and numbers.
+        if option_params.type == "boolean" then
+            option_params.default = false
+        elseif option_params.type == "number" then
+            option_params.default = 0
+        end
+    end
     if not (self.registry and self.registry[mod_id]) then
         self:RegisterMod(mod_id)
     end
@@ -657,6 +669,162 @@ function XModConfigEnum:PreviousPage()
     self:SetPage(next_page)
 end
 
+DefineClass.XModConfigNumberInput = {
+    __parents = {
+        "XWindow",
+    },
+    properties = {
+        {
+            category = "Params",
+            id = "ModId",
+            editor = "text",
+            default = "",
+        },
+        {
+            category = "Params",
+            id = "OptionId",
+            editor = "text",
+            default = "",
+        },
+        {
+            category = "Params",
+            id = "OptionName",
+            editor = "text",
+            default = "",
+        },
+        {
+            category = "Params",
+            id = "Min",
+            editor = "number",
+            default = nil,
+        },
+        {
+            category = "Params",
+            id = "Max",
+            editor = "number",
+            default = nil,
+        },
+        {
+            category = "Params",
+            id = "Step",
+            editor = "number",
+            default = 1,
+        },
+    },
+    HAlign = "right",
+    LayoutMethod = "HList",
+}
+
+function XModConfigNumberInput:Init()
+    self.idRemove = XTextButton:new({
+        Id = "idRemove",
+        HAlign = "left",
+        VAlign = "center",
+        MouseCursor = "UI/Cursors/Rollover.tga",
+        FXMouseIn = "RocketRemoveCargoHover",
+        RepeatStart = 300,
+        RepeatInterval = 150,
+        OnPress =  function(self) self.parent:Remove() end,
+        Image = "UI/Infopanel/arrow_remove.tga",
+        ColumnsUse = "abcc",
+        RolloverTemplate = "Rollover",
+    }, self)
+    self.idAmount = XText:new({
+        Id = "idAmount",
+        Padding = box(2, 2, 5, 2),
+        HAlign = "right",
+        VAlign = "center",
+        MinWidth = 60,
+        MaxWidth = 70,
+        TextFont = "PGResource",
+        TextColor = RGBA(255, 248, 233, 255),
+        RolloverTextColor = RGBA(255, 255, 255, 255),
+        WordWrap = false,
+        TextHAlign = "right",
+        TextVAlign = "center",
+    }, self)
+    self.idAdd = XTextButton:new({
+        Id = "idAdd",
+        HAlign = "right",
+        VAlign = "center",
+        MouseCursor = "UI/Cursors/Rollover.tga",
+        FXMouseIn = "RocketRemoveCargoHover",
+        RepeatStart = 300,
+        RepeatInterval = 300,
+        OnPress =  function(self) self.parent:Add() end,
+        Image = "UI/Infopanel/arrow_add.tga",
+        ColumnsUse = "abcc",
+        RolloverTemplate = "Rollover",
+    }, self)
+    local AddRemoveRolloverHint = T{
+        ModConfig.StringIdBase + 4,
+        "<em><click></em> x<step><newline>"..
+        "<em><shift> + <click></em> x<step10><newline>"..
+        "<em><control> + <click></em> x<step100>",
+        click = "<image "..MouseButtonImagesInText.MouseL..">",
+        shift = ShortcutKeysToText({VKStrNames[const.vkShift]}),
+        control = ShortcutKeysToText({VKStrNames[const.vkControl]}),
+        step = self.Step,
+        step10 = self.Step * 10,
+        step100 = self.Step * 100,
+    }
+    self.idRemove:SetRolloverTitle(self.OptionName)
+    self.idAdd:SetRolloverTitle(self.OptionName)
+    self.idRemove:SetRolloverText(self.OptionDesc or T{
+        ModConfig.StringIdBase + 5,
+        "<center>Decrease"
+    })
+    self.idAdd:SetRolloverText(self.OptionDesc or T{
+        ModConfig.StringIdBase + 6,
+        "<center>Increase"
+    })
+    self.idRemove:SetRolloverHint(AddRemoveRolloverHint)
+    self.idAdd:SetRolloverHint(AddRemoveRolloverHint)
+    self:Set(ModConfig:Get(self.ModId, self.OptionId))
+end
+
+function XModConfigNumberInput:Set(value)
+    if type(value) ~= "number" then value = 0 end
+    if self.Min ~= nil and value < self.Min then
+        value = self.Min
+    elseif self.Max ~= nil and value > self.Max then
+        value = self.Max
+    end
+    self.current_value = value
+    if value == self.Min then
+        self.idRemove:SetVisible(false)
+    else
+        self.idRemove:SetVisible(true)
+    end
+    if value == self.Max then
+        self.idAdd:SetVisible(false)
+    else
+        self.idAdd:SetVisible(true)
+    end
+    self.idAmount:SetText(LocaleInt(self.current_value))
+    ModConfig:Set(self.ModId, self.OptionId, value)
+end
+
+function XModConfigNumberInput:Remove()
+    local step = self.Step
+    if terminal.IsKeyPressed(const.vkShift) then
+        step = step * 10
+    elseif terminal.IsKeyPressed(const.vkControl) then
+        step = step * 100
+    end
+    self:Set(self.current_value - step)
+end
+
+function XModConfigNumberInput:Add()
+    local step = self.Step
+    if terminal.IsKeyPressed(const.vkShift) then
+        step = step * 10
+    elseif terminal.IsKeyPressed(const.vkControl) then
+        step = step * 100
+    end
+    self:Set(self.current_value + step)
+end
+
 
 function ModConfig:AddOptionControl(parent, mod_id, option_id)
     local option_params = self.registry[mod_id].options[option_id]
@@ -677,6 +845,18 @@ function ModConfig:AddOptionControl(parent, mod_id, option_id)
             ModId = mod_id,
             OptionId = option_id,
             OptionValues = option_params.values,
+            MaxHeight = 35,
+        }, parent)
+    elseif option_params.type == 'number' then
+        XModConfigNumberInput:new({
+            Id = option_id,
+            ModId = mod_id,
+            OptionId = option_id,
+            OptionName = option_params.name,
+            OptionDesc = option_params.desc,
+            Max = option_params.max,
+            Min = option_params.min,
+            Step = option_params.step or 1,
             MaxHeight = 35,
         }, parent)
     end
