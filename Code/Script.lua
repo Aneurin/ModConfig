@@ -394,12 +394,12 @@ function ModConfig:CreateModConfigDialog()
             CreateRealTimeThread(function()
                 if self.window_state ~= "destroying" then
                     self.rollover = rollover
-                    self.idRollover2:SetVisible(rollover)
                     self.idCloseButtonIcon:SetRollover(rollover)
-                    local b = self.parent.idRollover2.box
+                    self.idRollover2:SetVisible(rollover)
+                    local b = self.idRollover2.box
                     self.idRollover2:AddInterpolation({
                         type = const.intRect,
-                        duration = self.parent.idRollover2:GetFadeInTime(),
+                        duration = self.idRollover2:GetFadeInTime(),
                         startRect = b,
                         endRect = sizebox(b:minx(), b:miny(), 40, b:sizey()),
                         flags = const.intfInverse,
