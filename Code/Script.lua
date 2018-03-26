@@ -346,7 +346,7 @@ function ModConfig:CreateModConfigDialog()
     }, scroll_container)
 
     -- Intro text
-    if self.registry and #self.registry > 0 then
+    if self.registry and next(self.registry) ~= nil then
         XText:new({
             Padding = box(5, 2, 5, 2),
             VAlign = "center",
@@ -356,7 +356,7 @@ function ModConfig:CreateModConfigDialog()
             RolloverTextColor = RGB(233, 242, 255),
             Translate = true
         }, content):SetText(T{ModConfig.StringIdBase + 1,
-                "Mouse over options to see a description of what they mean"})
+                "Mouse over options to see a description of what they mean."})
     end
 
     -- The options themselves
