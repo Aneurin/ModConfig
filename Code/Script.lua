@@ -87,11 +87,13 @@ end
 -- @return The new value of the option
 function ModConfig:Set(mod_id, option_id, value, token)
     local old_value = self:Get(mod_id, option_id)
-    if not self.data then self.data = {} end
-    if not self.data[mod_id] then self.data[mod_id] = {} end
-    self.data[mod_id][option_id] = value
-    self:Save()
-    Msg("ModConfigChanged", mod_id, option_id, value, old_value, token)
+    if value ~= old_value then
+        if not self.data then self.data = {} end
+        if not self.data[mod_id] then self.data[mod_id] = {} end
+        self.data[mod_id][option_id] = value
+        self:Save()
+        Msg("ModConfigChanged", mod_id, option_id, value, old_value, token)
+    end
     return value
 end
 
