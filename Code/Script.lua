@@ -190,6 +190,17 @@ function ModConfig:Save()
     AsyncStringToFile(file_path, ValueToLuaCode(mod_data))
 end
 
+-- Sometimes you want to do something very early on, when ModConfig might not have loaded yet
+-- because there's no way to set mod load order in Surviving Mars. If you have a hard dependency on
+-- ModConfig, you can just put it in your OnMsg.ModConfigChanged handler and it will run as soon as
+-- ModConfig is ready, but otherwise you can check if ModConfig is enabled and ready by doing
+-- "if ModConfig and ModConfig:IsReady() then ..."
+function ModConfig:IsReady()
+    -- The internal token is set immediately before firing ModConfigReady, so we can check for it to
+    -- determine whether we've finished loading.
+    return self.internal_token ~= nil
+end
+
 ----------------------------------------------------------------------------------------------------
 -- Nothing below this line constitutes part of this mod's API.
 
