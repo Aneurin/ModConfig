@@ -202,6 +202,7 @@ end
 
 function OnMsg.Autorun()
     ModConfig:Load()
+    ModConfig.internal_token = 70492318 -- en entirely arbitrary token, randomly generated
     Msg("ModConfigReady")
 end
 
@@ -234,6 +235,18 @@ function OnMsg.UIReady()
         -- There's something fishy here, but this is the right place at the moment for an unmodded
         -- game, so it makes the best fallback I can think of
         table.insert(main_menu[1][4], 6, menu_entry)
+    end
+end
+
+function OnMsg.ModConfigChanged(mod_id, option_id, value, old_value, token)
+    if token ~= ModConfig.internal_token then
+        -- A value was changed externally
+        local interface = GetInGameInterface()
+        if interface.idModConfigDlg  and interface.idModConfigDlg:IsVisible() then
+            -- The dialog is open, so we need to reflect external changes.
+            -- @todo - Not yet implemented! I could hack it in by recreating the dialog but then
+            -- you'd lose your scroll position if there's more than one page visible.
+        end
     end
 end
 
@@ -604,7 +617,7 @@ function XModConfigToggleButton:Init()
 end
 function XModConfigToggleButton:OnChange(toggled)
     self.idIcon:SetImage(toggled and self.EnabledImage or self.DisabledImage)
-    ModConfig:Set(self.ModId, self.OptionId, toggled)
+    ModConfig:Set(self.ModId, self.OptionId, toggled, ModConfig.internal_token)
 end
 
 
@@ -653,7 +666,7 @@ function XModConfigEnum:SetPage(page, update)
     self.current_page = page
     self.idPage:SetText(self.OptionValues[page].label)
     if update then
-        ModConfig:Set(self.ModId, self.OptionId, self.OptionValues[page].value)
+        ModConfig:Set(self.ModId, self.OptionId, self.OptionValues[page].value, ModConfig.internal_token)
     end
 end
 
@@ -806,7 +819,7 @@ function XModConfigNumberInput:Set(value)
         self.idAdd:SetVisible(true)
     end
     self.idAmount:SetText(LocaleInt(self.current_value))
-    ModConfig:Set(self.ModId, self.OptionId, value)
+    ModConfig:Set(self.ModId, self.OptionId, value, ModConfig.internal_token)
 end
 
 function XModConfigNumberInput:Remove()
