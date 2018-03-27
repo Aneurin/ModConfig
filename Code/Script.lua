@@ -160,7 +160,11 @@ end
 -- @return The current setting of the option if set, else the default if defined, else nil
 function ModConfig:Get(mod_id, option_id)
     local mod_data = self.data and self.data[mod_id]
-    return mod_data and mod_data[option_id] or self:GetDefault(mod_id, option_id)
+    local value = mod_data and mod_data[option_id]
+    if value == nil then
+        value = self:GetDefault(mod_id, option_id)
+    end
+    return value
 end
 
 -- Load previously saved settings from disk.
