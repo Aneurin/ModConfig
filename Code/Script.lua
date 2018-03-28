@@ -253,7 +253,7 @@ function OnMsg.ModConfigChanged(mod_id, option_id, value, old_value, token)
     if token ~= ModConfig.internal_token then
         -- A value was changed externally
         local interface = GetInGameInterface()
-        if interface.idModConfigDlg  and interface.idModConfigDlg:IsVisible() then
+        if interface and interface.idModConfigDlg  and interface.idModConfigDlg:IsVisible() then
             -- The dialog is open, so we need to reflect external changes.
             -- @todo - Not yet implemented! I could hack it in by recreating the dialog but then
             -- you'd lose your scroll position if there's more than one page visible.
@@ -338,6 +338,7 @@ function ModConfig:CreateModConfigDialog()
         LayoutMethod = "VList",
         HandleMouse = true,
     }, interface)
+    dlg:SetFocus(true)
     dlg:SetVisible(false)
     local win = XWindow:new({
         Dock = "box",
@@ -493,6 +494,10 @@ function ModConfig:CreateModConfigDialog()
             return self.parent.rollover and self.RolloverTextColor or self.TextColor
         end,
     }, close_button):SetText(T{1011, "Close"})
+    XAction:new({
+        OnActionEffect = "close",
+        ActionShortcut = "Escape",
+    }, dlg)
 end
 
 function ModConfig:AddAllModSettingsToDialog(parent)
