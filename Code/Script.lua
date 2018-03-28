@@ -51,9 +51,9 @@ end
 --                                1. Options with the same order will be ordered alphabetically by
 --                                name.
 --                        type - The type of variable this option controls. Currently 'boolean',
---                               'enum', and 'number' are supported. In the future this is likely to
---                               be extended to other options such as an input slider. If unset,
---                               defaults to 'boolean'.
+--                               'enum', 'number', and 'note' are supported. In the future this is
+--                               likely to be extended to other options such as an input slider. If
+--                               unset, defaults to 'boolean'.
 --                        values - When type is 'enum', this defines the possible values for the
 --                                 option, and the label shown to the user.
 --                                 Example: values = {
@@ -887,6 +887,7 @@ function ModConfig:AddOptionControl(parent, mod_id, option_id)
             Step = option_params.step or 1,
             MaxHeight = 35,
         }, parent)
+    elseif option_params.type == 'note' then
     end
 end
 
