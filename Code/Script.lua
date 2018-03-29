@@ -265,8 +265,7 @@ function OnMsg.ModConfigChanged(mod_id, option_id, value, old_value, token)
         local interface = GetInGameInterface()
         if interface and interface.idModConfigDlg  and interface.idModConfigDlg:IsVisible() then
             -- The dialog is open, so we need to reflect external changes.
-            -- @todo - Not yet implemented! I could hack it in by recreating the dialog but then
-            -- you'd lose your scroll position if there's more than one page visible.
+            ModConfig.elements[mod_id][option_id]:Set(value, false)
         end
     end
 end
@@ -306,6 +305,7 @@ end
 
 function ModConfig.CloseDialog()
     GetInGameInterface().idModConfigDlg:delete()
+    ModConfig.elements = {}
 end
 
 function ModConfig.OpenDialog()
@@ -639,11 +639,20 @@ DefineClass.XModConfigToggleButton = {
 }
 function XModConfigToggleButton:Init()
     self.idIcon.ImageFit = "height"
-    self:SetToggled(ModConfig:Get(self.ModId, self.OptionId))
+    self:SetToggled(ModConfig:Get(self.ModId, self.OptionId), false)
 end
-function XModConfigToggleButton:OnChange(toggled)
-    self.idIcon:SetImage(toggled and self.EnabledImage or self.DisabledImage)
-    ModConfig:Set(self.ModId, self.OptionId, toggled, ModConfig.internal_token)
+
+function XModConfigToggleButton:SetToggled(toggled, update)
+    self:Set(toggled, update)
+end
+
+function XModConfigToggleButton:Set(value, update)
+    if update == nil then update = true end
+    self.Toggled = value
+    self.idIcon:SetImage(value and self.EnabledImage or self.DisabledImage)
+    if update then
+        ModConfig:Set(self.ModId, self.OptionId, value, ModConfig.internal_token)
+    end
 end
 
 
@@ -684,15 +693,16 @@ function XModConfigEnum:Init()
             break
         end
     end
-    self:SetPage(value_index, false)
+    self:Set(value_index, false)
 end
 
-function XModConfigEnum:SetPage(page, update)
+function XModConfigEnum:Set(page, update)
     if update == nil then update = true end
     self.current_page = page
     self.idPage:SetText(self.OptionValues[page].label)
     if update then
-        ModConfig:Set(self.ModId, self.OptionId, self.OptionValues[page].value, ModConfig.internal_token)
+        ModConfig:Set(self.ModId, self.OptionId,
+            self.OptionValues[page].value, ModConfig.internal_token)
     end
 end
 
@@ -701,7 +711,7 @@ function XModConfigEnum:NextPage()
     if next_page > #self.OptionValues then
         next_page = 1
     end
-    self:SetPage(next_page)
+    self:Set(next_page)
 end
 
 function XModConfigEnum:PreviousPage()
@@ -709,7 +719,7 @@ function XModConfigEnum:PreviousPage()
     if next_page < 1 then
         next_page = #self.OptionValues
     end
-    self:SetPage(next_page)
+    self:Set(next_page)
 end
 
 DefineClass.XModConfigNumberInput = {
@@ -826,7 +836,8 @@ function XModConfigNumberInput:Init()
     self:Set(ModConfig:Get(self.ModId, self.OptionId))
 end
 
-function XModConfigNumberInput:Set(value)
+function XModConfigNumberInput:Set(value, update)
+    if update == nil then update = true end
     if type(value) ~= "number" then value = 0 end
     if self.Min ~= nil and value < self.Min then
         value = self.Min
@@ -845,7 +856,9 @@ function XModConfigNumberInput:Set(value)
         self.idAdd:SetVisible(true)
     end
     self.idAmount:SetText(LocaleInt(self.current_value))
-    ModConfig:Set(self.ModId, self.OptionId, value, ModConfig.internal_token)
+    if update then
+        ModConfig:Set(self.ModId, self.OptionId, value, ModConfig.internal_token)
+    end
 end
 
 function XModConfigNumberInput:Remove()
@@ -970,15 +983,16 @@ function ModConfig:AddOptionControl(parent, mod_id, option_id)
     if not option_params.type then
         option_params.type = 'boolean'
     end
+    local element
     if option_params.type == 'boolean' then
-        XModConfigToggleButton:new({
+        element = XModConfigToggleButton:new({
             Id = option_id,
             ModId = mod_id,
             OptionId = option_id,
             MaxHeight = 35,
         }, parent)
     elseif option_params.type == 'enum' then
-        XModConfigEnum:new({
+        element = XModConfigEnum:new({
             Id = option_id,
             ModId = mod_id,
             OptionId = option_id,
@@ -986,7 +1000,7 @@ function ModConfig:AddOptionControl(parent, mod_id, option_id)
             MaxHeight = 35,
         }, parent)
     elseif option_params.type == 'number' then
-        XModConfigNumberInput:new({
+        element = XModConfigNumberInput:new({
             Id = option_id,
             ModId = mod_id,
             OptionId = option_id,
@@ -1000,7 +1014,7 @@ function ModConfig:AddOptionControl(parent, mod_id, option_id)
     elseif option_params.type == 'slider' then
         local max = option_params.max or 100
         local min = option_params.min or 0
-        XModConfigSlider:new({
+        element = XModConfigSlider:new({
             Id = option_id,
             ModId = mod_id,
             OptionId = option_id,
@@ -1013,6 +1027,11 @@ function ModConfig:AddOptionControl(parent, mod_id, option_id)
             MaxHeight = 35,
         }, parent)
     elseif option_params.type == 'note' then
+    end
+    if element then
+        if not self.elements then self.elements = {} end
+        if not self.elements[mod_id] then self.elements[mod_id] = {} end
+        self.elements[mod_id][option_id] = element
     end
 end
 
