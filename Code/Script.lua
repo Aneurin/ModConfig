@@ -51,9 +51,9 @@ end
 --                                1. Options with the same order will be ordered alphabetically by
 --                                name.
 --                        type - The type of variable this option controls. Currently 'boolean',
---                               'enum', 'number', and 'note' are supported. In the future this is
---                               likely to be extended to other options such as an input slider. If
---                               unset, defaults to 'boolean'.
+--                               'enum', 'number', 'slider', and 'note' are supported. In the future
+--                               this may be extended to other options. If unset, defaults to
+--                               'boolean'.
 --                        values - When type is 'enum', this defines the possible values for the
 --                                 option, and the label shown to the user.
 --                                 Example: values = {
@@ -61,10 +61,20 @@ end
 --                                                      {value = "foo", label = T{12345, "Foo"}},
 --                                                      {value = true, label = "Always"}
 --                                                   }
---                        min, max - When type is 'number', these are used to set the minimum and
---                                   maximum allowed values. If unset, no limits are enforced.
+--                        min, max - When type is 'number' or 'slider', these are used to set the
+--                                   minimum and maximum allowed values. If unset, no limits are
+--                                   enforced for 'number', and slider defaults to 0 and 100
+--                                   respectively.
 --                        step - When type is 'number', this is used to set how much the value will
 --                               change when clicking the +/- buttons. If unset, defaults to 1.
+--                               When type is 'slider', this sets the steps that the slider will
+--                               snap to, and defaults to (max - min) / 10.
+--                        label - When type is 'slider', this can optionally be used to display the
+--                                current value as the user moves the slider, by passing a T{}
+--                                object which uses a <value> element.
+--                                Example: label = T{12345, "Set to <value>"} or
+--                                         label = T{12345, "<percent(value)>"}
+--                                If unset, defaults to blank.
 --                        default - The value to use if the user hasn't set the option.
 function ModConfig:RegisterOption(mod_id, option_id, option_params)
     option_params = option_params or {}
@@ -74,7 +84,7 @@ function ModConfig:RegisterOption(mod_id, option_id, option_params)
         -- It makes sense to have a built-in fallback default for booleans and numbers.
         if option_params.type == "boolean" then
             option_params.default = false
-        elseif option_params.type == "number" then
+        elseif option_params.type == "number"  or option_params.type == "slider" then
             option_params.default = 0
         end
     end
@@ -858,6 +868,101 @@ function XModConfigNumberInput:Add()
     self:Set(self.current_value + step)
 end
 
+DefineClass.XModConfigSlider = {
+    __parents = {
+        "XPropControl",
+    },
+    properties = {
+        {
+            category = "Params",
+            id = "ModId",
+            editor = "text",
+            default = "",
+        },
+        {
+            category = "Params",
+            id = "OptionId",
+            editor = "text",
+            default = "",
+        },
+        {
+            category = "Params",
+            id = "OptionName",
+            editor = "text",
+            default = "",
+        },
+        {
+            category = "Params",
+            id = "Min",
+            editor = "number",
+            default = nil,
+        },
+        {
+            category = "Params",
+            id = "Max",
+            editor = "number",
+            default = nil,
+        },
+        {
+            category = "Params",
+            id = "Step",
+            editor = "number",
+            default = 1,
+        },
+    },
+    RolloverOnFocus = true,
+    FXMouseIn = "MenuItemHover",
+}
+
+function XModConfigSlider:Init()
+    XWindow:new({
+        Id = "idSliderTarget",
+        OnScrollTo = function(self, scroll) self.parent:Set(scroll) end,
+    }, self)
+    self.slider = XScrollThumb:new({
+        Dock = "right",
+        VAlign = "center",
+        Icon = "UI/Infopanel/progress_bar_slider.tga",
+        Max = self.Max,
+        Min = self.Min,
+        StepSize = self.Step,
+        Target = "idSliderTarget",
+        MinWidth = 200,
+        Horizontal = true,
+    }, self)
+    XFrame:new({
+        ZOrder = 0,
+        Image = "UI/Infopanel/progress_bar.tga",
+        FrameBox = box(5, 0, 5, 0),
+        SqueezeY = false,
+    }, self.slider)
+    self.idLabel = XText:new({
+        TextColor = RGBA(255, 248, 233, 255),
+        RolloverTextColor = RGBA(255, 255, 255, 255),
+        Translate = true,
+        Margins = box(10, 0, 10, 0),
+        Dock = "right",
+    }, self)
+    self:Set(ModConfig:Get(self.ModId, self.OptionId))
+end
+
+function XModConfigSlider:Set(value, update)
+    if update == nil then update = true end
+    if type(value) ~= "number" then value = 0 end
+    if value < self.Min then
+        value = self.Min
+    elseif value > self.Max then
+        value = self.Max
+    end
+    self.slider:SetScroll(value)
+    if self.Label then
+        self.idLabel:SetText(T{self.Label, value=value})
+    end
+    if update then
+        ModConfig:Set(self.ModId, self.OptionId, value, ModConfig.internal_token)
+    end
+end
+
 
 function ModConfig:AddOptionControl(parent, mod_id, option_id)
     local option_params = self.registry[mod_id].options[option_id]
@@ -890,6 +995,21 @@ function ModConfig:AddOptionControl(parent, mod_id, option_id)
             Max = option_params.max,
             Min = option_params.min,
             Step = option_params.step or 1,
+            MaxHeight = 35,
+        }, parent)
+    elseif option_params.type == 'slider' then
+        local max = option_params.max or 100
+        local min = option_params.min or 0
+        XModConfigSlider:new({
+            Id = option_id,
+            ModId = mod_id,
+            OptionId = option_id,
+            OptionName = option_params.name,
+            OptionDesc = option_params.desc,
+            Max = max or 100,
+            Min = min or 0,
+            Step = option_params.step or floatfloor((max - min) / 10),
+            Label = option_params.label,
             MaxHeight = 35,
         }, parent)
     elseif option_params.type == 'note' then
