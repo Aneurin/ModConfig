@@ -204,7 +204,7 @@ end
 -- because there's no way to set mod load order in Surviving Mars. If you have a hard dependency on
 -- ModConfig, you can just put it in your OnMsg.ModConfigChanged handler and it will run as soon as
 -- ModConfig is ready, but otherwise you can check if ModConfig is enabled and ready by doing
--- "if ModConfig and ModConfig:IsReady() then ..."
+-- "if rawget(_G, "ModConfig") and ModConfig:IsReady() then ..."
 function ModConfig:IsReady()
     -- The internal token is set immediately before firing ModConfigReady, so we can check for it to
     -- determine whether we've finished loading.
