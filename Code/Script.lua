@@ -79,6 +79,7 @@ end
 function ModConfig:RegisterOption(mod_id, option_id, option_params)
     option_params = option_params or {}
     option_params.name = option_params.name or option_id
+    option_params.desc = option_params.desc or ""
     option_params.order = option_params.order or 1
     if not option_params.default then
         -- It makes sense to have a built-in fallback default for booleans and numbers.
@@ -175,6 +176,32 @@ function ModConfig:Get(mod_id, option_id)
         value = self:GetDefault(mod_id, option_id)
     end
     return value
+end
+
+-- Get a table of all the currently registered mods.
+--
+-- Using this is preferred over accessing the registry directly, as the internal format of the
+-- registry might change in the future.
+--
+-- @return Table whose keys are registered mod IDs, and values are a table with keys
+--         'name, desc, options', where 'options' is a table as returned by GetRegisteredOptions()
+function ModConfig:GetRegisteredMods()
+    -- Currently this just returns the registry as-is
+    return self.registry or {}
+end
+
+-- Get a table of all the options registered for the given mod.
+--
+-- Using this is preferred over accessing the registry directly, as the internal format of the
+-- registry might change in the future.
+--
+-- @return Table whose keys are option IDs, and values are a table with keys 'name, desc, order',
+--         and any or all optional keys 'default, type, values, min, max, step, label'.
+function ModConfig:GetRegisteredOptions(mod_id)
+    if not (self.registry and self.registry[mod_id]) then
+        return {}
+    end
+    return self.registry[mod_id].options or {}
 end
 
 -- Load previously saved settings from disk.
