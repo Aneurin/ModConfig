@@ -593,10 +593,10 @@ function ModConfig:AddModSettingsToDialog(parent, mod_id, mod_registry)
             order = option_params.order
         }
     end
-    -- TSort() appears to be a stable sort, so to sort by "order, name" we can sort by name and then
-    -- resort the result by order.
+    -- To sort by "order, name" we can sort by name and then resort the result by order.
     TSort(sortable, "name")
-    TSort(sortable, "order")
+    -- TSort converts all its fields to text, so we can't use it if we want 9 to sort before 10
+    table.stable_sort(sortable, function(a, b) return a.order < b.order end)
     for _, sorted_option_params in ipairs(sortable) do
         local option_id = sorted_option_params.id
         local option_params = mod_registry.options[option_id]
