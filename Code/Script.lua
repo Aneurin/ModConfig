@@ -908,6 +908,21 @@ function XModConfigNumberInput:Add()
     self:Set(self.current_value + step)
 end
 
+--  A bit of a shim class to emulate the behaviour of XScrollThumb from before the Curiosity update.
+DefineClass.XModConfigScrollThumb = {
+    __parents = {
+        "XScrollThumb",
+        "XEmbedIcon",
+    },
+}
+
+function XModConfigScrollThumb:Init()
+    -- The post-Curiosity XScrollThumb seems to be intended to be used only via its XSleekScroll
+    -- subclass, which has an idThumb property that's functionally equivalent (for our purposes at
+    -- least) to XEmbedIcon's idIcon property, so we just add an alias.
+    self.idThumb = self.idIcon
+end
+
 DefineClass.XModConfigSlider = {
     __parents = {
         "XPropControl",
@@ -959,7 +974,7 @@ function XModConfigSlider:Init()
         Id = "idSliderTarget",
         OnScrollTo = function(self, scroll) self.parent:Set(scroll) end,
     }, self)
-    self.slider = XScrollThumb:new({
+    self.slider = XModConfigScrollThumb:new({
         Dock = "right",
         VAlign = "center",
         Icon = "UI/Infopanel/progress_bar_slider.tga",
