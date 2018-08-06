@@ -206,12 +206,11 @@ end
 
 -- Load previously saved settings from disk.
 function ModConfig:Load()
-    local file_path = "AppData/ModConfig.data"
-    local err, file_content = AsyncFileToString(file_path)
+    local err, file_content = ReadModPersistentData()
     if err then
         self.data = {}
     else
-        err, data = LuaCodeToTuple(file_content)
+        err, data = LuaCodeToTuple(Decompress(file_content))
         if not err then self.data = data end
     end
     if not self.registry then self.registry = {} end
@@ -219,12 +218,16 @@ end
 
 -- Save all of the current settings to disk.
 function ModConfig:Save()
-    local file_path = "AppData/ModConfig.data"
     local mod_data = self.data or {}
-    AsyncFileDelete(file_path..".bak")
-    AsyncCopyFile(file_path, file_path..".bak")
-    AsyncFileDelete(file_path)
-    AsyncStringToFile(file_path, ValueToLuaCode(mod_data))
+    local save_data = Compress(ValueToLuaCode(mod_data))
+    local interface = GetInGameInterface()
+    if interface and interface.idModConfigDlg  and interface.idModConfigDlg:IsVisible() then
+        ModConfig.space_label:SetText(T{ModConfig.StringIdBase + 7,
+            "(Storage space in use: <used>%)",
+            used = 100* string.len(save_data) / const.MaxModDataSize,
+        })
+    end
+    WriteModPersistentData(save_data)
 end
 
 -- Sometimes you want to do something very early on, when ModConfig might not have loaded yet
@@ -245,7 +248,7 @@ end
 ModConfig.StringIdBase = 76827146
 
 function ModConfig.ModDir()
-    return debug.getinfo(2, "S").source:sub(2, -16)
+    return Mods["d16iXjT"].path
 end
 
 function OnMsg.Autorun()
@@ -435,6 +438,15 @@ function ModConfig:CreateModConfigDialog()
             Translate = true
         }, content):SetText(T{ModConfig.StringIdBase + 1,
                 "Mouse over options to see a description of what they mean."})
+        ModConfig.space_label = XText:new({
+            Padding = box(5, 2, 5, 2),
+            VAlign = "center",
+            TextAlign = "center",
+            --TextFont = "InfopanelText",
+            TextColor = RGB(233, 242, 255),
+            RolloverTextColor = RGB(233, 242, 255),
+            Translate = true
+        }, content)
     end
 
     -- The options themselves
