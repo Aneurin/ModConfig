@@ -207,6 +207,7 @@ end
 -- Load previously saved settings from disk.
 function ModConfig:Load()
     local err, file_content = ReadModPersistentData()
+    local data
     if err then
         self.data = {}
     else
