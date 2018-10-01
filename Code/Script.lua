@@ -248,10 +248,6 @@ end
 -- Randomly generated number to start counting from, to generate IDs for translatable strings
 ModConfig.StringIdBase = 76827146
 
-function ModConfig.ModDir()
-    return Mods["d16iXjT"].path
-end
-
 function OnMsg.Autorun()
     ModConfig:Load()
     ModConfig.internal_token = 70492318 -- en entirely arbitrary token, randomly generated
@@ -362,7 +358,6 @@ function ModConfig:CreateModConfigDialog()
     if interface.idModConfigDlg then
         interface.idModConfigDlg:delete()
     end
-    local this_mod_dir = ModConfig:ModDir()
 
     -- Create the base dialog
     local dlg = XDialog:new({
@@ -389,7 +384,7 @@ function ModConfig:CreateModConfigDialog()
         ImageFit = "stretch",
     }, win)
     XFrame:new({
-        Image = this_mod_dir.."UI/watermark_tilable.tga",
+        Image = CurrentModPath.."UI/watermark_tilable.tga",
         TileFrame = true,
     }, win)
 
